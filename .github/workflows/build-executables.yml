@@ -182,27 +182,21 @@ jobs:
         if (Test-Path "BUILD_EXECUTABLE_README.md") { Copy-Item "BUILD_EXECUTABLE_README.md" "release\" -Force }
         
         # Create usage instructions
-        $content = @"
-Excel Product Data Extractor - Executable Version
-=================================================
-
-QUICK START:
-1. Double-click ExcelProductExtractor${{ matrix.extension }} to run
-2. Select your Excel file with product hyperlinks
-3. Wait for processing to complete
-4. Open the generated output file
-
-REQUIREMENTS:
-- None! All dependencies are included
-
-PLATFORM:
-- Built for: ${{ matrix.platform }}
-- Built on: $(Get-Date)
-
-SUPPORT:
-- See README.md for detailed instructions
-- See BUILD_EXECUTABLE_README.md for build information
-"@
+        $content = "Excel Product Data Extractor - Executable Version`n"
+        $content += "=================================================`n`n"
+        $content += "QUICK START:`n"
+        $content += "1. Double-click ExcelProductExtractor${{ matrix.extension }} to run`n"
+        $content += "2. Select your Excel file with product hyperlinks`n"
+        $content += "3. Wait for processing to complete`n"
+        $content += "4. Open the generated output file`n`n"
+        $content += "REQUIREMENTS:`n"
+        $content += "- None! All dependencies are included`n`n"
+        $content += "PLATFORM:`n"
+        $content += "- Built for: ${{ matrix.platform }}`n"
+        $content += "- Built on: $(Get-Date)`n`n"
+        $content += "SUPPORT:`n"
+        $content += "- See README.md for detailed instructions`n"
+        $content += "- See BUILD_EXECUTABLE_README.md for build information`n"
         Set-Content -Path "release\HOW_TO_USE.txt" -Value $content
       shell: pwsh
 
@@ -220,27 +214,25 @@ SUPPORT:
         cp BUILD_EXECUTABLE_README.md release/ 2>/dev/null || true
         
         # Create usage instructions
-        cat > release/HOW_TO_USE.txt << EOF
-        Excel Product Data Extractor - Executable Version
-        =================================================
-        
-        QUICK START:
-        1. Double-click ExcelProductExtractor${{ matrix.extension }} to run
-        2. Select your Excel file with product hyperlinks
-        3. Wait for processing to complete
-        4. Open the generated output file
-        
-        REQUIREMENTS:
-        - None! All dependencies are included
-        
-        PLATFORM:
-        - Built for: ${{ matrix.platform }}
-        - Built on: $(date)
-        
-        SUPPORT:
-        - See README.md for detailed instructions
-        - See BUILD_EXECUTABLE_README.md for build information
-        EOF
+        echo "Excel Product Data Extractor - Executable Version" > release/HOW_TO_USE.txt
+        echo "=================================================" >> release/HOW_TO_USE.txt
+        echo "" >> release/HOW_TO_USE.txt
+        echo "QUICK START:" >> release/HOW_TO_USE.txt
+        echo "1. Double-click ExcelProductExtractor${{ matrix.extension }} to run" >> release/HOW_TO_USE.txt
+        echo "2. Select your Excel file with product hyperlinks" >> release/HOW_TO_USE.txt
+        echo "3. Wait for processing to complete" >> release/HOW_TO_USE.txt
+        echo "4. Open the generated output file" >> release/HOW_TO_USE.txt
+        echo "" >> release/HOW_TO_USE.txt
+        echo "REQUIREMENTS:" >> release/HOW_TO_USE.txt
+        echo "- None! All dependencies are included" >> release/HOW_TO_USE.txt
+        echo "" >> release/HOW_TO_USE.txt
+        echo "PLATFORM:" >> release/HOW_TO_USE.txt
+        echo "- Built for: ${{ matrix.platform }}" >> release/HOW_TO_USE.txt
+        echo "- Built on: $(date)" >> release/HOW_TO_USE.txt
+        echo "" >> release/HOW_TO_USE.txt
+        echo "SUPPORT:" >> release/HOW_TO_USE.txt
+        echo "- See README.md for detailed instructions" >> release/HOW_TO_USE.txt
+        echo "- See BUILD_EXECUTABLE_README.md for build information" >> release/HOW_TO_USE.txt
       shell: bash
 
     - name: Upload executable artifact
