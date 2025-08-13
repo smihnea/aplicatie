@@ -1,0 +1,58 @@
+# GUI Framework
+customtkinter>=5.2.0
+tkinter-tooltip>=2.5.0
+
+# Excel Processing
+openpyxl>=3.1.2
+pandas>=2.0.3
+xlrd>=2.0.1
+
+# Web Scraping
+aiohttp>=3.8.5
+beautifulsoup4>=4.12.2
+requests>=2.31.0
+requests-html>=0.10.0
+playwright>=1.36.0
+selenium>=4.11.2
+
+# HTML Parsing
+lxml>=4.9.3
+html5lib>=1.1
+
+# Azure AI Integration
+azure-ai-formrecognizer>=3.3.0
+azure-core>=1.28.0
+
+# Data Processing & Validation
+pydantic>=2.1.1
+python-dateutil>=2.8.2
+pytz>=2023.3
+
+# Async Processing
+asyncio-throttle>=1.0.2
+aiofiles>=23.1.0
+
+# Configuration Management
+pyyaml>=6.0.1
+python-dotenv>=1.0.0
+
+# Logging & Monitoring
+structlog>=23.1.0
+colorama>=0.4.6
+
+# Packaging (for Windows executable)
+pyinstaller>=5.13.0
+cx-freeze>=6.15.6
+
+# Development & Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.1
+pytest-mock>=3.11.1
+black>=23.7.0
+flake8>=6.0.0
+mypy>=1.5.1
+
+# Utilities
+tqdm>=4.65.0
+pathlib2>=2.3.7
+typing-extensions>=4.7.1

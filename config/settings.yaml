@@ -1,0 +1,71 @@
+app_name: Excel Processor & Web Scraper
+app_version: 1.0.0
+developer: James - Full Stack Developer
+
+scraping:
+  concurrent_requests: 12  # Increased for better throughput
+  timeout: 20              # Reduced timeout for faster failure detection  
+  retry_attempts: 2        # Reduced to avoid excessive delays
+  retry_delay: 0.5         # Faster retries
+  requests_per_second: 5.0 # Increased throughput (still respectful)
+  user_agents:
+    - Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+    - Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36  
+    - Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15
+    - Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+  default_headers:
+    Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+    Accept-Language: en-US,en;q=0.9
+    Accept-Encoding: gzip, deflate, br
+    Connection: keep-alive
+    Cache-Control: no-cache
+    Upgrade-Insecure-Requests: '1'
+  respect_robots_txt: true
+  # Performance optimizations
+  connection_pool_size: 50
+  dns_cache_ttl: 300
+  enable_compression: true
+
+azure:
+  endpoint: ''
+  api_key: ''
+  confidence_threshold: 0.8
+  enabled: false
+  use_fallback_on_failure: true
+  cost_optimization: true
+
+output:
+  preserve_formatting: false
+  add_metadata: true
+  backup_originals: true
+  output_suffix: _enhanced
+  output_columns:
+    ean: EAN Code
+    ral_number: RAL Number
+    net_width: Net Width (mm)
+    net_height: Net Height (mm)
+    net_depth: Net Depth (mm)
+    package_units: Package Units
+    package_weight: Package Weight (kg)
+    extraction_confidence: Data Confidence
+    extraction_method: Extraction Method
+
+ui:
+  theme: dark
+  window_width: 1200
+  window_height: 800
+  max_file_size_mb: 100
+  supported_extensions:
+    - .xlsx
+    - .xls
+  show_detailed_progress: true
+  auto_scroll_logs: true
+
+logging:
+  level: INFO
+  log_to_file: true
+  log_file_path: logs/excel_processor.log
+  max_log_size_mb: 10
+  backup_count: 5
+  colorize_console: true
+  show_timestamps: true
