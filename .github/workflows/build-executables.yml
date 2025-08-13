@@ -32,7 +32,21 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Debug - List repository contents
+    - name: Debug - List repository contents (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        Write-Host "=== Repository Root ==="
+        Get-ChildItem -Force | Format-Table Name, Length, LastWriteTime
+        Write-Host "=== Key Files Check ==="
+        Write-Host "requirements.txt exists: $(if (Test-Path requirements.txt) { 'YES' } else { 'NO' })"
+        Write-Host "excel_processor.spec exists: $(if (Test-Path excel_processor.spec) { 'YES' } else { 'NO' })"
+        Write-Host "start_app.py exists: $(if (Test-Path start_app.py) { 'YES' } else { 'NO' })"
+        Write-Host "=== Working Directory ==="
+        Get-Location
+      shell: pwsh
+
+    - name: Debug - List repository contents (Unix)
+      if: matrix.platform != 'windows'
       run: |
         echo "=== Repository Root ==="
         ls -la
@@ -42,6 +56,7 @@ jobs:
         echo "start_app.py exists: $(test -f start_app.py && echo 'YES' || echo 'NO')"
         echo "=== Working Directory ==="
         pwd
+      shell: bash
 
     - name: Set up Python 3.12
       uses: actions/setup-python@v4
@@ -102,18 +117,24 @@ jobs:
       if: matrix.platform == 'windows'
       run: |
         if (Test-Path "dist\ExcelProductExtractor.exe") {
-          $size = (Get-Item "dist\ExcelProductExtractor.exe").Length / 1MB
+          $size = [math]::Round((Get-Item "dist\ExcelProductExtractor.exe").Length / 1MB, 1)
           Write-Host "✅ Windows executable created: $size MB"
           Get-Item "dist\ExcelProductExtractor.exe" | Select-Object Name, Length, LastWriteTime
         } elseif (Test-Path "dist\ExcelProductExtractor") {
-          $size = (Get-Item "dist\ExcelProductExtractor").Length / 1MB
+          $size = [math]::Round((Get-Item "dist\ExcelProductExtractor").Length / 1MB, 1)
           Write-Host "✅ Windows executable created: $size MB"
           Get-Item "dist\ExcelProductExtractor" | Select-Object Name, Length, LastWriteTime
         } else {
-          Write-Host "❌ No executable found"
-          Get-ChildItem "dist" -Recurse
+          Write-Host "❌ No executable found in dist directory"
+          Write-Host "Contents of dist directory:"
+          if (Test-Path "dist") {
+            Get-ChildItem "dist" -Recurse -Force | Select-Object Name, FullName, Length
+          } else {
+            Write-Host "dist directory does not exist"
+          }
           exit 1
         }
+      shell: pwsh
 
     - name: Verify build output (macOS/Linux)
       if: matrix.platform != 'windows'
@@ -133,24 +154,65 @@ jobs:
       if: matrix.platform == 'windows'
       run: |
         if (Test-Path "dist\ExcelProductExtractor") {
-          Rename-Item "dist\ExcelProductExtractor" "ExcelProductExtractor.exe"
-          Move-Item "ExcelProductExtractor.exe" "dist\"
+          Write-Host "Renaming ExcelProductExtractor to ExcelProductExtractor.exe"
+          Move-Item "dist\ExcelProductExtractor" "dist\ExcelProductExtractor.exe" -Force
+          Write-Host "Renamed successfully"
+        } else {
+          Write-Host "ExcelProductExtractor not found for renaming"
         }
+      shell: pwsh
 
-    - name: Create distribution package
+    - name: Create distribution package (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        New-Item -ItemType Directory -Path "release" -Force
+        
+        # Copy main executable
+        if (Test-Path "dist\ExcelProductExtractor.exe") {
+          Copy-Item "dist\ExcelProductExtractor.exe" "release\" -Force
+          Write-Host "Copied ExcelProductExtractor.exe"
+        } elseif (Test-Path "dist\ExcelProductExtractor") {
+          Copy-Item "dist\ExcelProductExtractor" "release\ExcelProductExtractor.exe" -Force
+          Write-Host "Copied and renamed ExcelProductExtractor to .exe"
+        }
+        
+        # Copy configuration and documentation
+        if (Test-Path "config") { Copy-Item "config" "release\" -Recurse -Force }
+        if (Test-Path "README.md") { Copy-Item "README.md" "release\" -Force }
+        if (Test-Path "BUILD_EXECUTABLE_README.md") { Copy-Item "BUILD_EXECUTABLE_README.md" "release\" -Force }
+        
+        # Create usage instructions
+        $content = @"
+Excel Product Data Extractor - Executable Version
+=================================================
+
+QUICK START:
+1. Double-click ExcelProductExtractor${{ matrix.extension }} to run
+2. Select your Excel file with product hyperlinks
+3. Wait for processing to complete
+4. Open the generated output file
+
+REQUIREMENTS:
+- None! All dependencies are included
+
+PLATFORM:
+- Built for: ${{ matrix.platform }}
+- Built on: $(Get-Date)
+
+SUPPORT:
+- See README.md for detailed instructions
+- See BUILD_EXECUTABLE_README.md for build information
+"@
+        Set-Content -Path "release\HOW_TO_USE.txt" -Value $content
+      shell: pwsh
+
+    - name: Create distribution package (Unix)
+      if: matrix.platform != 'windows'
       run: |
         mkdir -p release
         
         # Copy main executable
-        if [ "${{ matrix.platform }}" = "windows" ]; then
-          if [ -f "dist/ExcelProductExtractor.exe" ]; then
-            cp "dist/ExcelProductExtractor.exe" "release/"
-          elif [ -f "dist/ExcelProductExtractor" ]; then
-            cp "dist/ExcelProductExtractor" "release/ExcelProductExtractor.exe"
-          fi
-        else
-          cp "dist/ExcelProductExtractor" "release/"
-        fi
+        cp "dist/ExcelProductExtractor" "release/"
         
         # Copy configuration and documentation
         cp -r config release/ 2>/dev/null || true
