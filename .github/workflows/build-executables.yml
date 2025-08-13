@@ -54,20 +54,22 @@ jobs:
       if: matrix.platform == 'linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
-          libtkinter3.0-dev \
-          python3-tk \
-          libffi-dev \
-          libssl-dev \
-          libbz2-dev \
-          libreadline-dev \
-          libsqlite3-dev \
-          libncurses5-dev \
-          libncursesw5-dev \
-          xz-utils \
-          tk-dev \
-          libffi-dev \
-          liblzma-dev
+        # Install packages one by one for better error reporting
+        sudo apt-get install -y python3-tk || echo "python3-tk installation failed"
+        sudo apt-get install -y python3-dev || echo "python3-dev installation failed"
+        sudo apt-get install -y tk-dev || echo "tk-dev installation failed"
+        sudo apt-get install -y tcl-dev || echo "tcl-dev installation failed"
+        sudo apt-get install -y libffi-dev || echo "libffi-dev installation failed"
+        sudo apt-get install -y libssl-dev || echo "libssl-dev installation failed"
+        sudo apt-get install -y libbz2-dev || echo "libbz2-dev installation failed"
+        sudo apt-get install -y libreadline-dev || echo "libreadline-dev installation failed"
+        sudo apt-get install -y libsqlite3-dev || echo "libsqlite3-dev installation failed"
+        sudo apt-get install -y libncurses-dev || echo "libncurses-dev installation failed"
+        sudo apt-get install -y xz-utils || echo "xz-utils installation failed"
+        sudo apt-get install -y liblzma-dev || echo "liblzma-dev installation failed"
+        sudo apt-get install -y build-essential || echo "build-essential installation failed"
+        sudo apt-get install -y pkg-config || echo "pkg-config installation failed"
+        echo "System dependencies installation completed"
 
     - name: Install Python dependencies
       run: |
@@ -79,8 +81,11 @@ jobs:
           pip install -r requirements.txt
         else
           echo "requirements.txt not found, installing basic dependencies"
-          pip install customtkinter openpyxl pandas aiohttp beautifulsoup4 requests pyyaml structlog
+          pip install customtkinter openpyxl pandas aiohttp beautifulsoup4 requests pyyaml structlog colorama
         fi
+        
+        # Ensure tkinter is available for GUI applications
+        python -c "import tkinter; print('✅ tkinter available')" || echo "⚠️ tkinter not available - GUI may not work"
       shell: bash
 
     - name: Create application directories
