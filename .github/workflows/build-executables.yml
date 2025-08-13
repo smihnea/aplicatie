@@ -1,0 +1,271 @@
+name: Build Cross-Platform Executables
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            extension: .exe
+            artifact_name: ExcelProductExtractor-Windows
+          - os: macos-latest
+            platform: macos
+            extension: ""
+            artifact_name: ExcelProductExtractor-macOS
+          - os: ubuntu-latest
+            platform: linux
+            extension: ""
+            artifact_name: ExcelProductExtractor-Linux
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Install system dependencies (Ubuntu)
+      if: matrix.platform == 'linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libtkinter3.0-dev \
+          python3-tk \
+          libffi-dev \
+          libssl-dev \
+          libbz2-dev \
+          libreadline-dev \
+          libsqlite3-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          xz-utils \
+          tk-dev \
+          libffi-dev \
+          liblzma-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller
+        pip install -r requirements.txt
+
+    - name: Create application directories
+      run: |
+        mkdir -p cache/scraping/data
+        mkdir -p logs
+        mkdir -p output
+
+    - name: Build executable with PyInstaller
+      run: |
+        pyinstaller --clean excel_processor.spec
+
+    - name: Verify build output (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        if (Test-Path "dist\ExcelProductExtractor.exe") {
+          $size = (Get-Item "dist\ExcelProductExtractor.exe").Length / 1MB
+          Write-Host "✅ Windows executable created: $size MB"
+          Get-Item "dist\ExcelProductExtractor.exe" | Select-Object Name, Length, LastWriteTime
+        } elseif (Test-Path "dist\ExcelProductExtractor") {
+          $size = (Get-Item "dist\ExcelProductExtractor").Length / 1MB
+          Write-Host "✅ Windows executable created: $size MB"
+          Get-Item "dist\ExcelProductExtractor" | Select-Object Name, Length, LastWriteTime
+        } else {
+          Write-Host "❌ No executable found"
+          Get-ChildItem "dist" -Recurse
+          exit 1
+        }
+
+    - name: Verify build output (macOS/Linux)
+      if: matrix.platform != 'windows'
+      run: |
+        if [ -f "dist/ExcelProductExtractor" ]; then
+          size=$(stat -f%z "dist/ExcelProductExtractor" 2>/dev/null || stat -c%s "dist/ExcelProductExtractor")
+          size_mb=$((size / 1024 / 1024))
+          echo "✅ ${{ matrix.platform }} executable created: ${size_mb} MB"
+          ls -la "dist/ExcelProductExtractor"
+        else
+          echo "❌ No executable found"
+          ls -la dist/
+          exit 1
+        fi
+
+    - name: Rename executable for Windows
+      if: matrix.platform == 'windows'
+      run: |
+        if (Test-Path "dist\ExcelProductExtractor") {
+          Rename-Item "dist\ExcelProductExtractor" "ExcelProductExtractor.exe"
+          Move-Item "ExcelProductExtractor.exe" "dist\"
+        }
+
+    - name: Create distribution package
+      run: |
+        mkdir -p release
+        
+        # Copy main executable
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          if [ -f "dist/ExcelProductExtractor.exe" ]; then
+            cp "dist/ExcelProductExtractor.exe" "release/"
+          elif [ -f "dist/ExcelProductExtractor" ]; then
+            cp "dist/ExcelProductExtractor" "release/ExcelProductExtractor.exe"
+          fi
+        else
+          cp "dist/ExcelProductExtractor" "release/"
+        fi
+        
+        # Copy configuration and documentation
+        cp -r config release/ 2>/dev/null || true
+        cp README.md release/ 2>/dev/null || true
+        cp BUILD_EXECUTABLE_README.md release/ 2>/dev/null || true
+        
+        # Create usage instructions
+        cat > release/HOW_TO_USE.txt << EOF
+        Excel Product Data Extractor - Executable Version
+        =================================================
+        
+        QUICK START:
+        1. Double-click ExcelProductExtractor${{ matrix.extension }} to run
+        2. Select your Excel file with product hyperlinks
+        3. Wait for processing to complete
+        4. Open the generated output file
+        
+        REQUIREMENTS:
+        - None! All dependencies are included
+        
+        PLATFORM:
+        - Built for: ${{ matrix.platform }}
+        - Built on: $(date)
+        
+        SUPPORT:
+        - See README.md for detailed instructions
+        - See BUILD_EXECUTABLE_README.md for build information
+        EOF
+      shell: bash
+
+    - name: Upload executable artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: release/
+        retention-days: 30
+
+    - name: Create release zip
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        cd release
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          powershell -Command "Compress-Archive -Path * -DestinationPath ../${{ matrix.artifact_name }}.zip"
+        else
+          zip -r ../${{ matrix.artifact_name }}.zip .
+        fi
+      shell: bash
+
+  # Create GitHub Release when a tag is pushed
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      
+    - name: Create release zips
+      run: |
+        for dir in ExcelProductExtractor-*; do
+          if [ -d "$dir" ]; then
+            cd "$dir"
+            zip -r "../${dir}.zip" .
+            cd ..
+          fi
+        done
+        ls -la *.zip
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Excel Product Extractor ${{ github.ref_name }}
+        body: |
+          ## 🚀 Excel Product Data Extractor - Release ${{ github.ref_name }}
+          
+          ### 📦 Available Downloads:
+          
+          - **Windows**: `ExcelProductExtractor-Windows.zip` - Contains `.exe` file
+          - **macOS**: `ExcelProductExtractor-macOS.zip` - Contains executable for Mac
+          - **Linux**: `ExcelProductExtractor-Linux.zip` - Contains executable for Linux
+          
+          ### 🎯 How to Use:
+          
+          1. Download the appropriate zip file for your operating system
+          2. Extract the zip file
+          3. Double-click the executable to run
+          4. No Python installation required!
+          
+          ### ✨ Features:
+          
+          - Modern GUI interface using CustomTkinter
+          - Processes Excel files with ABB product hyperlinks
+          - Extracts product data: EAN Code, RAL Number, Dimensions, Weight
+          - Creates clean output Excel with only extracted data
+          - Concurrent web scraping with optimized performance
+          
+          ### 🔧 What's Included:
+          
+          Each download contains:
+          - The main executable (no Python required)
+          - Configuration files
+          - Documentation and usage instructions
+          - All dependencies bundled
+        files: |
+          ExcelProductExtractor-Windows.zip
+          ExcelProductExtractor-macOS.zip
+          ExcelProductExtractor-Linux.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build summary
+  summary:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Build Summary
+      run: |
+        echo "## 🏗️ Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Platform | Status | Artifact |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|--------|----------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Windows  | ${{ needs.build.result }} | ExcelProductExtractor-Windows |" >> $GITHUB_STEP_SUMMARY
+        echo "| macOS    | ${{ needs.build.result }} | ExcelProductExtractor-macOS |" >> $GITHUB_STEP_SUMMARY
+        echo "| Linux    | ${{ needs.build.result }} | ExcelProductExtractor-Linux |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Next Steps:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Download artifacts from the Actions tab" >> $GITHUB_STEP_SUMMARY
+        echo "2. Test executables on target platforms" >> $GITHUB_STEP_SUMMARY
+        echo "3. Create a release tag to trigger automatic releases" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ startsWith(github.ref, 'refs/tags/') }}" = "true" ]; then
+          echo "🎉 **Release created!** Check the Releases page for downloads." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "💡 **Tip:** Push a tag (e.g., \`git tag v1.0.0 && git push origin v1.0.0\`) to create a release!" >> $GITHUB_STEP_SUMMARY
+        fi
